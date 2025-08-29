@@ -39,15 +39,24 @@ export function Capture({ onResultAction }: Props) {
   }
 
   async function openCamera() {
-    try {
-      const s = await startStream("environment");
-      setStream(s);
-      setShowCamera(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = s;
-      }
-    } catch {
-      alert("Unable to access camera. Please allow permissions.");
+    const canUseGum = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia && window.isSecureContext;
+    if (canUseGum) {
+      try {
+        const s = await startStream("environment");
+        setStream(s);
+        setShowCamera(true);
+        if (videoRef.current) {
+          const v = videoRef.current;
+          v.srcObject = s;
+          await v.play?.();
+        }
+        return;
+      } catch {}
+    }
+    // Fallback: trigger file input with capture hint for mobile browsers
+    if (cameraInputRef.current) {
+      cameraInputRef.current.setAttribute("capture", "environment");
+      cameraInputRef.current.click();
     }
   }
 
@@ -90,14 +99,14 @@ export function Capture({ onResultAction }: Props) {
         }}
       />
 
-      <div {...getRootProps()} className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center ${isDragActive ? "border-gray-900 bg-gray-50" : "border-gray-300 hover:bg-gray-50"}`}>
+      <div {...getRootProps()} className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center transition-colors ${isDragActive ? "border-indigo-400 bg-indigo-50" : "border-blue-200 hover:bg-blue-50"}`}>
         <input {...getInputProps()} />
-        <p className="text-sm text-gray-600">Drag & drop a photo of your food, or click to select</p>
-        {file && <div className="text-xs text-gray-700">{file.name} ({Math.round(file.size/1024)} KB)</div>}
+        <p className="text-sm text-gray-700">Drag & drop a photo of your food, or click to select</p>
+        {file && <div className="text-xs text-gray-600">{file.name} ({Math.round(file.size/1024)} KB)</div>}
       </div>
       {showCamera ? (
         <div className="flex flex-col gap-2">
-          <video ref={videoRef} autoPlay playsInline className="w-full rounded-lg border" />
+          <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-xl border shadow-sm" />
           <div className="flex items-center gap-2">
             <Button type="button" onClick={captureFrame}>Capture</Button>
             <Button type="button" onClick={stopCamera}>Cancel</Button>
